@@ -4,8 +4,8 @@
 CHAT_REGION = {'top': 15, 'left': 5, 'width': 420, 'height': 160, 'mon': 2}
 
 # Seconds to wait before auto-replying (feels more human)
-RESPONSE_DELAY_MIN = 1.5
-RESPONSE_DELAY_MAX = 3.5
+RESPONSE_DELAY_MIN = 0.3
+RESPONSE_DELAY_MAX = 0.6
 
 # Seconds between OCR scans
 SCAN_INTERVAL = 0.5

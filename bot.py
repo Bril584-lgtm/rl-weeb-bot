@@ -9,6 +9,7 @@ from pynput import keyboard as kb
 import config
 from capture import ChatCapture
 from responder import WEEBResponder
+import typer as _typer
 from typer import send_chat
 
 load_dotenv()
@@ -43,9 +44,11 @@ class RLWeebBot:
         self._mode = mode
         self._capture = ChatCapture(config.CHAT_REGION)
         self._responder = WEEBResponder()
+        _typer._bot_typing_flag = self  # let typer suppress its own T keypresses
         self._sent: set[str] = set()
         self._pending: threading.Timer | None = None
         self._user_opened_chat = threading.Event()
+        self._bot_typing = False  # true while bot is pressing T itself
         self._last_reply_at: float = 0
         self._cooldown: float = 8.0
         self._goal_at: float = 0
@@ -58,7 +61,7 @@ class RLWeebBot:
             ch = key.char
         except AttributeError:
             return
-        if ch in ('t', 'T'):
+        if ch in ('t', 'T') and not self._bot_typing:
             self._user_opened_chat.set()
             if self._pending:
                 self._pending.cancel()
