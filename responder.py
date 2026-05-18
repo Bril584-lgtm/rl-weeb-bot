@@ -7,79 +7,73 @@ import re
 TRIGGERS: dict[str, list[str]] = {
     "gg": [
         "gg uwu that was so sugoi!!",
-        "gg!! you're so kakkoii senpai (≧◡≦)",
         "ggwp!! this was so much fun nyaa~",
         "gg!! i had so much fun playing with you uwu",
     ],
     "what a save": [
         "gomenasai senpai i tried my bestest uwu",
-        "i-it wasn't that great baka!! (>_<)",
+        "i-it wasn't that great baka!!",
         "a-arigato... i got lucky uwu",
-        "s-stop it senpai you're making me blush uwu",
     ],
     "nice shot": [
-        "a-arigato senpai!! (⁄ ⁄>⁄ ▽ ⁄<⁄ ⁄)",
+        "a-arigato senpai!!",
         "nyaa~ thank you!! uwu",
         "h-hontoni?? you're too kind senpai uwu",
-        "e-ehh?? i-it was nothing uwu",
     ],
     "easy": [
-        "h-hontoni?! that wasn't easy baka!! (눈_눈)",
-        "nani?? easy?? you're so mean senpai!! >_<",
-        "i-it was NOT easy!! hmph!! (╬ Ò﹏Ó)",
+        "h-hontoni?! that wasn't easy baka!!",
+        "nani?? easy?? you're so mean senpai!!",
         "iie!! nothing about this is easy!! uwu",
     ],
     "?": [
-        "nani?? (눈_눈)",
+        "nani??",
         "nani ga okita no?? uwu",
         "e-eh?? what happened senpai uwu",
-        "???  watashi wa confused desu uwu",
     ],
     "wow": [
         "sugoi desu ne~!! uwu",
-        "SUGOI!! (ﾉ◕ヮ◕)ﾉ",
+        "SUGOI!! nyaa~",
         "waaaa sugoi!! nyaa~",
-        "a-are you impressed?? (⁄ ⁄>⁄ ▽ ⁄<⁄ ⁄)",
     ],
     "close": [
         "s-so close!! my kokoro couldn't take it uwu",
-        "chotto matte that was too close!! (>ω<)",
+        "chotto matte that was too close!!",
         "my heart uwu that was so close nyaa",
     ],
     "nice": [
         "arigato gozaimasu senpai!! uwu",
-        "nyaa~ thank you so much!! (≧▽≦)",
+        "nyaa~ thank you so much!!",
         "a-arigato!! you're so kind uwu",
     ],
     "lol": [
-        "hehehe~ nyaa!! (ﾉ≧∀≦)ﾉ",
+        "hehehe~ nyaa!!",
         "ahahaha~ uwu same!!",
-        "w-wha— that was so funny uwu",
+        "w-wha that was so funny uwu",
     ],
     "no": [
-        "n-nani?! IIE!! (╬ Ò﹏Ó)",
+        "n-nani?! IIE!!",
         "nooo~ that can't be!! uwu",
-        "iie iie iie!! >_<",
+        "iie iie iie!!",
     ],
     "yes": [
-        "hai hai!! uwu (≧◡≦)",
+        "hai hai!! uwu",
         "YES!! sugoi!! nyaa~",
         "hai desu!! uwu",
     ],
     "thanks": [
         "d-dou itashimashite senpai uwu",
-        "nyaa~ of course!! (≧▽≦)",
+        "nyaa~ of course!!",
         "a-anytime senpai!! uwu",
     ],
     "sorry": [
         "daijoubu daijoubu!! uwu it's okay nyaa~",
-        "ii yo ii yo~ don't worry about it!! (≧◡≦)",
+        "ii yo ii yo~ don't worry about it!!",
         "mou~ it's okay senpai uwu",
     ],
     "stop": [
-        "y-you can't just tell me to stop!! baka!! (>_<)",
+        "y-you can't just tell me to stop!! baka!!",
         "iie!! i won't stop!! nyaa~",
-        "hmph!! (╬ Ò﹏Ó)",
+        "hmph!!",
     ],
     "why": [
         "naze...?? uwu that's a very good question senpai",
@@ -87,12 +81,12 @@ TRIGGERS: dict[str, list[str]] = {
         "b-because!! that's why!! uwu",
     ],
     "noob": [
-        "n-nani?! i'm not a noob!! baka!! (눈_눈)",
+        "n-nani?! i'm not a noob!! baka!!",
         "hmph!! i'm actually very kawaii AND skilled!! uwu",
-        "t-that's so rude senpai!! (╬ Ò﹏Ó)",
+        "t-that's so rude senpai!!",
     ],
     "haha": [
-        "a-are you laughing at me?? (>_<)",
+        "a-are you laughing at me??",
         "nyahaha~ uwu i'm glad you find it funny!!",
         "hehe~ uwu",
     ],
@@ -107,19 +101,23 @@ GENERIC_REACTIONS = [
     "uwu",
     "nyaa~",
     "sugoi!!",
-    "nani?? (눈_눈)",
+    "nani??",
     "h-hontoni?? uwu",
-    "a-are you perhaps flirting with me senpai?? (⁄ ⁄>⁄ ▽ ⁄<⁄ ⁄)",
     "ehhh?? uwu",
-    "mou~ (>_<)",
+    "mou~",
     "w-watashi wa confused desu uwu",
-    "owo what's this??",
+    "owo whats this??",
     "nani the heck senpai uwu",
     "h-hai... uwu",
     "s-senpai noticed me!! nyaa~",
     "uwu uwu uwu",
     "t-this is fine uwu",
 ]
+
+
+def _sanitize(text: str) -> str:
+    """Strip non-ASCII characters RL chat can't display."""
+    return text.encode('ascii', errors='ignore').decode('ascii').strip()
 
 _OWO_SUBS = [
     (r'\b([rRlL])\b', lambda m: 'w' if m.group().islower() else 'W'),
@@ -172,14 +170,15 @@ class WEEBResponder:
                 max_tokens=80,
                 system=(
                     "You are a weeb bot in Rocket League chat. "
-                    "Reply in weeb/owo style but keep it SHORT — under 100 characters total. "
-                    "Give a real answer to questions, just weeb-flavored. ONE sentence only. "
-                    "Use: uwu, owo, nyaa, senpai, sugoi, nani, hai, baka, arigato. Romaji only, no Japanese script. "
+                    "Reply in weeb/owo style, SHORT — under 100 characters. ONE sentence only. "
+                    "Give a real answer to questions, just weeb-flavored. "
+                    "Use ONLY plain ASCII characters — no emoji, no Japanese script, no Unicode symbols. "
+                    "Use words like: uwu, owo, nyaa, senpai, sugoi, nani, hai, baka, arigato, desu, nyaa. "
                     "Example: 'what is 2+2' -> 's-senpai its 4 desu uwu'"
                 ),
                 messages=[{"role": "user", "content": message}],
             )
-            return resp.content[0].text.strip()[:120]
+            return _sanitize(resp.content[0].text)[:120]
         except Exception:
             return None
 
@@ -195,10 +194,10 @@ class WEEBResponder:
         # Trigger-based fallback
         for trigger, replies in TRIGGERS.items():
             if trigger in msg_lower:
-                return random.choice(replies)
+                return _sanitize(random.choice(replies))
 
         # Owoify their message back (50% chance)
         if len(message) > 4 and random.random() < 0.5:
-            return _owoify(message)
+            return _sanitize(_owoify(message))
 
-        return random.choice(GENERIC_REACTIONS)
+        return _sanitize(random.choice(GENERIC_REACTIONS))
