@@ -20,6 +20,8 @@ class RLWeebBot:
         self._sent: set[str] = set()          # messages we've sent — skip these
         self._pending: threading.Timer | None = None
         self._user_opened_chat = threading.Event()
+        self._last_reply_at: float = 0        # timestamp of last sent reply
+        self._cooldown: float = 8.0           # seconds of silence after each reply
 
     # ── Keyboard listener ────────────────────────────────────────────────────
 
@@ -77,6 +79,7 @@ class RLWeebBot:
             print(f"[bot] Sending → {reply}")
             send_chat(reply)
             self._sent.add(reply.lower().strip())
+            self._last_reply_at = time.time()
             self._pending = None
 
         self._pending = threading.Timer(delay, _fire)
@@ -95,6 +98,10 @@ class RLWeebBot:
             if self._is_quick_chat(message):
                 continue
             if len(message) < 2:
+                continue
+
+            # Cooldown — stay silent after each reply
+            if time.time() - self._last_reply_at < self._cooldown:
                 continue
 
             reply = self._responder.respond(message)
