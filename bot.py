@@ -13,18 +13,43 @@ from typer import send_chat
 
 load_dotenv()
 
+MODES = {
+    "1": ("goal",    "Goal only     — reply once after a goal is scored (12s window)"),
+    "2": ("all",     "All chat      — reply to any text chat from other players"),
+    "3": ("mention", "Mention only  — reply only if your name is typed in chat"),
+    "4": ("off",     "Silent        — watch only, never type"),
+}
+
+
+def pick_mode() -> str:
+    print("==================================")
+    print("       RL Weeb Bot  owo")
+    print("==================================")
+    print("\nSelect a mode:\n")
+    for key, (_, desc) in MODES.items():
+        print(f"  [{key}] {desc}")
+    print()
+    while True:
+        choice = input("Mode (1-4): ").strip()
+        if choice in MODES:
+            mode, desc = MODES[choice]
+            print(f"\n>> {desc}\n")
+            return mode
+        print("    Pick 1, 2, 3 or 4.")
+
 
 class RLWeebBot:
-    def __init__(self):
+    def __init__(self, mode: str):
+        self._mode = mode
         self._capture = ChatCapture(config.CHAT_REGION)
         self._responder = WEEBResponder()
-        self._sent: set[str] = set()          # messages we've sent — skip these
+        self._sent: set[str] = set()
         self._pending: threading.Timer | None = None
         self._user_opened_chat = threading.Event()
-        self._last_reply_at: float = 0        # timestamp of last sent reply
-        self._cooldown: float = 8.0           # seconds of silence after each reply
-        self._goal_at: float = 0              # timestamp of last detected goal
-        self._goal_window: float = 12.0       # seconds after a goal to allow replies
+        self._last_reply_at: float = 0
+        self._cooldown: float = 8.0
+        self._goal_at: float = 0
+        self._goal_window: float = 12.0
 
     # ── Keyboard listener ────────────────────────────────────────────────────
 
@@ -34,24 +59,15 @@ class RLWeebBot:
         except AttributeError:
             return
         if ch in ('t', 'T'):
-            # User opened chat manually — cancel any pending auto-reply
             self._user_opened_chat.set()
             if self._pending:
                 self._pending.cancel()
                 self._pending = None
                 print("[bot] User opened chat — auto-reply cancelled")
 
-    # ── Core logic ───────────────────────────────────────────────────────────
+    # ── Parsing & filters ────────────────────────────────────────────────────
 
     def _parse_chat(self, line: str) -> tuple[str, str] | None:
-        """
-        Parse RL chat lines. Handles both:
-          'PlayerName: message'
-          '[3:36] PlayerName: message'  (with timestamp)
-        Returns (name, message) or None if not a chat line.
-        """
-        import re
-        # Strip leading timestamp like [3:36] or [3.36]
         clean = re.sub(r'^\[\d+[:.]\d+\]\s*', '', line).strip()
         if ':' not in clean:
             return None
@@ -60,18 +76,15 @@ class RLWeebBot:
         message = message.strip()
         if not name or not message or len(name) > 32 or len(message) > 120:
             return None
-        # Name must be mostly alphanumeric (real player names) — reject OCR garbage
         alnum = sum(c.isalnum() or c in '_- ' for c in name)
         if alnum / max(len(name), 1) < 0.6:
             return None
-        # Message must have at least 40% real word characters — reject garbled OCR
         word_chars = sum(c.isalpha() or c in " '?!.,'" for c in message)
         if word_chars / max(len(message), 1) < 0.4:
             return None
         return name, message
 
-    def _is_own_message(self, name: str, message: str) -> bool:
-        # RL shows your own messages as "YOU" — OCR may garble it slightly
+    def _is_own(self, name: str, message: str) -> bool:
         name_clean = re.sub(r'[^a-z]', '', name.lower())
         if name_clean in ('you', 'yov', 'vou', 'yo', 'ycu'):
             return True
@@ -82,6 +95,31 @@ class RLWeebBot:
     def _is_quick_chat(self, message: str) -> bool:
         return any(qc.lower() in message.lower() for qc in config.QUICK_CHATS)
 
+    def _mentions_me(self, message: str) -> bool:
+        if not config.MY_NAME:
+            return False
+        return config.MY_NAME.lower() in message.lower()
+
+    # ── Mode checks ──────────────────────────────────────────────────────────
+
+    def _check_goal(self, lines: list[str]):
+        for line in lines:
+            if re.search(r'\bgoal\b', line, re.IGNORECASE):
+                self._goal_at = time.time()
+                print("[bot] Goal detected — 12s reply window open")
+                break
+
+    def _allowed(self, name: str, message: str) -> bool:
+        if self._mode == "off":
+            return False
+        if self._mode == "goal":
+            return time.time() - self._goal_at < self._goal_window
+        if self._mode == "mention":
+            return self._mentions_me(message)
+        return True  # "all" mode
+
+    # ── Reply scheduling ─────────────────────────────────────────────────────
+
     def _schedule_reply(self, reply: str):
         delay = random.uniform(config.RESPONSE_DELAY_MIN, config.RESPONSE_DELAY_MAX)
         self._user_opened_chat.clear()
@@ -90,7 +128,7 @@ class RLWeebBot:
             if self._user_opened_chat.is_set():
                 print("[bot] Reply suppressed — user typed manually")
                 return
-            print(f"[bot] Sending → {reply}")
+            print(f"[bot] Sending -> {reply}")
             send_chat(reply)
             self._sent.add(reply.lower().strip())
             self._last_reply_at = time.time()
@@ -98,16 +136,6 @@ class RLWeebBot:
 
         self._pending = threading.Timer(delay, _fire)
         self._pending.start()
-
-    def _check_goal(self, lines: list[str]):
-        for line in lines:
-            if re.search(r'\bgoal\b', line, re.IGNORECASE):
-                self._goal_at = time.time()
-                print("[bot] Goal detected — reply window open")
-                break
-
-    def _in_goal_window(self) -> bool:
-        return time.time() - self._goal_at < self._goal_window
 
     def _handle_lines(self, lines: list[str]):
         self._user_opened_chat.clear()
@@ -118,35 +146,28 @@ class RLWeebBot:
                 continue
             name, message = parsed
 
-            if self._is_own_message(name, message):
+            if self._is_own(name, message):
                 continue
             if self._is_quick_chat(message):
                 continue
             if len(message) < 2:
                 continue
-
-            # Only reply during goal celebration window
-            if not self._in_goal_window():
+            if not self._allowed(name, message):
                 continue
-
-            # Cooldown — stay silent after each reply
             if time.time() - self._last_reply_at < self._cooldown:
                 continue
 
             reply = self._responder.respond(message)
             if reply and not self._pending:
-                print(f"[bot] {name}: '{message}' -> '{reply}'")
+                print(f"[bot] {name}: '{message}'")
                 self._schedule_reply(reply)
-                break  # one reply at a time
+                break
 
     # ── Main loop ────────────────────────────────────────────────────────────
 
     def run(self):
-        print("==================================")
-        print("       RL Weeb Bot  owo")
-        print("==================================")
+        print(f"Mode   : {MODES[[k for k,v in MODES.items() if v[0]==self._mode][0]][1]}")
         print(f"Region : {config.CHAT_REGION}")
-        print(f"Delay  : {config.RESPONSE_DELAY_MIN}–{config.RESPONSE_DELAY_MAX}s")
         print("Press Ctrl+C to stop.\n")
 
         listener = kb.Listener(on_press=self._on_press)
@@ -168,4 +189,5 @@ class RLWeebBot:
 
 
 if __name__ == "__main__":
-    RLWeebBot().run()
+    mode = pick_mode()
+    RLWeebBot(mode).run()
