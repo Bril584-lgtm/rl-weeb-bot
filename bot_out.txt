@@ -1,0 +1,35 @@
+[capture] Using OCR engine: easyocr
+==================================
+       RL Weeb Bot  owo
+==================================
+Region : {'top': 700, 'left': 0, 'width': 520, 'height': 370, 'mon': 1}
+Delay  : 1.5–3.5s
+Press Ctrl+C to stop.
+
+[bot] Detected: '(timeout'
+[bot] User opened chat — auto-reply cancelled
+[bot] Detected: 'Background'
+[bot] User opened chat — auto-reply cancelled
+[bot] Detected: 'Get_'
+[bot] User opened chat — auto-reply cancelled
+[bot] Detected: '(No output)'
+[bot] User opened chat — auto-reply cancelled
+[bot] Detected: 'PorerShell(Start-Proc'
+[bot] User opened chat — auto-reply cancelled
+[bot] Detected: '(No output)'
+[bot] User opened chat — auto-reply cancelled
+[bot] Detected: 'see'
+[bot] User opened chat — auto-reply cancelled
+[bot] Detected: 'appears ,'
+[bot] User opened chat — auto-reply cancelled
+[bot] Detected: 'Review current sessia'
+[bot] User opened chat — auto-reply cancelled
+[bot] Detected: 'its typing by itself'
+[bot] User opened chat — auto-reply cancelled
+[bot] Detected: 'ttsR-esveinepra icu rnroet'
+[bot] User opened chat — auto-reply cancelled
+[bot] Detected: 'Tnmmtnitttatestts32277sss'
+[bot] User opened chat — auto-reply cancelled
+[bot] Detected: 'TTTWMMTTTTTtn#T0esns2757'
+[bot] Sending → uwu
+[bot] User opened chat — auto-reply cancelled

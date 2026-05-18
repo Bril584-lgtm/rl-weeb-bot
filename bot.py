@@ -38,14 +38,32 @@ class RLWeebBot:
 
     # ── Core logic ───────────────────────────────────────────────────────────
 
+    def _is_player_chat(self, line: str) -> tuple[bool, str]:
+        """
+        RL text chat format is 'PlayerName: message'.
+        Returns (is_player_chat, message_only).
+        Rejects anything that doesn't have a colon separator — kills OCR noise,
+        system messages, scoreboard text, etc.
+        """
+        if ':' not in line:
+            return False, ''
+        name, _, message = line.partition(':')
+        name = name.strip()
+        message = message.strip()
+        # Name should be 1–32 chars, no newlines, reasonably word-like
+        if not name or not message or len(name) > 32:
+            return False, ''
+        return True, message
+
     def _is_own_message(self, line: str) -> bool:
         lower = line.lower()
-        if config.MY_NAME and config.MY_NAME.lower() in lower:
+        if config.MY_NAME and config.MY_NAME.lower() in lower.split(':')[0]:
             return True
-        return any(sent in lower for sent in self._sent)
+        _, _, msg = line.partition(':')
+        return any(sent in msg.lower().strip() for sent in self._sent)
 
-    def _is_quick_chat(self, line: str) -> bool:
-        lower = line.lower()
+    def _is_quick_chat(self, message: str) -> bool:
+        lower = message.lower()
         return any(qc.lower() in lower for qc in config.QUICK_CHATS)
 
     def _schedule_reply(self, reply: str):
@@ -68,25 +86,29 @@ class RLWeebBot:
         self._user_opened_chat.clear()
 
         for line in lines:
+            # Must look like "PlayerName: message" — filters all OCR noise
+            is_chat, message = self._is_player_chat(line)
+            if not is_chat:
+                continue
             if self._is_own_message(line):
                 continue
-            if self._is_quick_chat(line):
+            if self._is_quick_chat(message):
                 continue
-            if len(line.strip()) < 2:
+            if len(message) < 2:
                 continue
 
-            reply = self._responder.respond(line)
+            reply = self._responder.respond(message)
             if reply and not self._pending:
-                print(f"[bot] Detected: '{line}'")
+                print(f"[bot] Detected: '{line}' -> '{reply}'")
                 self._schedule_reply(reply)
                 break  # one reply at a time
 
     # ── Main loop ────────────────────────────────────────────────────────────
 
     def run(self):
-        print("╔══════════════════════════════════╗")
-        print("║       RL Weeb Bot  owo           ║")
-        print("╚══════════════════════════════════╝")
+        print("==================================")
+        print("       RL Weeb Bot  owo")
+        print("==================================")
         print(f"Region : {config.CHAT_REGION}")
         print(f"Delay  : {config.RESPONSE_DELAY_MIN}–{config.RESPONSE_DELAY_MAX}s")
         print("Press Ctrl+C to stop.\n")
