@@ -1,25 +1,26 @@
-"""Keyboard simulation — types messages into Rocket League chat."""
+"""Keyboard simulation — paste messages into Rocket League chat via clipboard."""
 import time
-import random
+import pyperclip
 from pynput.keyboard import Controller, Key
 
 _ctrl = Controller()
 
 
-def send_chat(message: str, wpm: int = 75):
-    """Press T to open chat, type message, press Enter."""
+def send_chat(message: str):
+    """Copy message to clipboard, open chat with T, paste, send."""
+    pyperclip.copy(message)
+    time.sleep(0.1)
+
     # Open chat
     _ctrl.press('t')
     _ctrl.release('t')
     time.sleep(0.2)
 
-    # Type each character at human-like speed
-    char_delay = 60 / (wpm * 5)
-    for char in message:
-        _ctrl.type(char)
-        jitter = random.uniform(0, char_delay * 0.6)
-        time.sleep(char_delay + jitter)
+    # Paste from clipboard — instant
+    with _ctrl.pressed(Key.ctrl):
+        _ctrl.press('v')
+        _ctrl.release('v')
 
-    time.sleep(0.12)
+    time.sleep(0.1)
     _ctrl.press(Key.enter)
     _ctrl.release(Key.enter)

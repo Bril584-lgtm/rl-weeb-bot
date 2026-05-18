@@ -1,6 +1,7 @@
 """Main bot loop — ties capture, responder, and typer together."""
 import time
 import random
+import re
 import threading
 from dotenv import load_dotenv
 from pynput import keyboard as kb
@@ -22,6 +23,8 @@ class RLWeebBot:
         self._user_opened_chat = threading.Event()
         self._last_reply_at: float = 0        # timestamp of last sent reply
         self._cooldown: float = 8.0           # seconds of silence after each reply
+        self._goal_at: float = 0              # timestamp of last detected goal
+        self._goal_window: float = 12.0       # seconds after a goal to allow replies
 
     # ── Keyboard listener ────────────────────────────────────────────────────
 
@@ -68,8 +71,9 @@ class RLWeebBot:
         return name, message
 
     def _is_own_message(self, name: str, message: str) -> bool:
-        # RL shows your own messages as "YOU"
-        if name.upper() == 'YOU':
+        # RL shows your own messages as "YOU" — OCR may garble it slightly
+        name_clean = re.sub(r'[^a-z]', '', name.lower())
+        if name_clean in ('you', 'yov', 'vou', 'yo', 'ycu'):
             return True
         if config.MY_NAME and config.MY_NAME.lower() in name.lower():
             return True
@@ -95,6 +99,16 @@ class RLWeebBot:
         self._pending = threading.Timer(delay, _fire)
         self._pending.start()
 
+    def _check_goal(self, lines: list[str]):
+        for line in lines:
+            if re.search(r'\bgoal\b', line, re.IGNORECASE):
+                self._goal_at = time.time()
+                print("[bot] Goal detected — reply window open")
+                break
+
+    def _in_goal_window(self) -> bool:
+        return time.time() - self._goal_at < self._goal_window
+
     def _handle_lines(self, lines: list[str]):
         self._user_opened_chat.clear()
 
@@ -109,6 +123,10 @@ class RLWeebBot:
             if self._is_quick_chat(message):
                 continue
             if len(message) < 2:
+                continue
+
+            # Only reply during goal celebration window
+            if not self._in_goal_window():
                 continue
 
             # Cooldown — stay silent after each reply
@@ -138,6 +156,7 @@ class RLWeebBot:
             while True:
                 new_lines = self._capture.get_new_lines()
                 if new_lines:
+                    self._check_goal(new_lines)
                     self._handle_lines(new_lines)
                 time.sleep(config.SCAN_INTERVAL)
         except KeyboardInterrupt:
