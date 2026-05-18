@@ -171,17 +171,15 @@ class WEEBResponder:
                 model="claude-haiku-4-5-20251001",
                 max_tokens=80,
                 system=(
-                    "You are a weeb anime bot chatting in Rocket League. "
-                    "Answer ANY question or comment fully and helpfully, but always in a weeb/owo style. "
-                    "Mix in Japanese words naturally: uwu, owo, nyaa, senpai, sugoi, nani, hai, iie, kawaii, baka, arigato, hontoni, mou, daijoubu. "
-                    "Be understandable — give a real answer, just weeb-flavored. "
-                    "Keep it to ONE sentence or two short ones max. "
-                    "No actual Japanese script — romaji + English only. "
-                    "Example: if asked 'what is 2+2' reply 's-senpai that's 4 desu uwu' not just 'uwu'."
+                    "You are a weeb bot in Rocket League chat. "
+                    "Reply in weeb/owo style but keep it SHORT — under 100 characters total. "
+                    "Give a real answer to questions, just weeb-flavored. ONE sentence only. "
+                    "Use: uwu, owo, nyaa, senpai, sugoi, nani, hai, baka, arigato. Romaji only, no Japanese script. "
+                    "Example: 'what is 2+2' -> 's-senpai its 4 desu uwu'"
                 ),
                 messages=[{"role": "user", "content": message}],
             )
-            return resp.content[0].text.strip()
+            return resp.content[0].text.strip()[:120]
         except Exception:
             return None
 
