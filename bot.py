@@ -67,21 +67,49 @@ class RLWeebBot:
 
     # ── Parsing & filters ────────────────────────────────────────────────────
 
+    # Names that are never real players
+    _BLOCKED_NAMES = {'https', 'http', 'www', 'you', 'party', 'system', 'server'}
+    # System message keywords — lines containing these are not player chat
+    _SYSTEM_PHRASES = ('left the match', 'joined the match', 'left the party',
+                       'joined the party', 'joined the team', 'have joined', 'voice chat')
+
     def _parse_chat(self, line: str) -> tuple[str, str] | None:
+        # Reject system notification lines
+        line_lower = line.lower()
+        if any(p in line_lower for p in self._SYSTEM_PHRASES):
+            return None
+
         clean = re.sub(r'^\[\d+[:.]\d+\]\s*', '', line).strip()
+        # Strip [PARTY] or [TEAM] prefixes
+        clean = re.sub(r'^\[.*?\]\s*', '', clean).strip()
+
         if ':' not in clean:
             return None
         name, _, message = clean.partition(':')
         name = name.strip()
         message = message.strip()
+
         if not name or not message or len(name) > 32 or len(message) > 120:
             return None
+
+        # Reject known non-player names
+        if name.lower() in self._BLOCKED_NAMES:
+            return None
+
+        # Message must start with a letter or digit
+        if not message[0].isalnum():
+            return None
+
+        # Name must be mostly alphanumeric
         alnum = sum(c.isalnum() or c in '_- ' for c in name)
         if alnum / max(len(name), 1) < 0.6:
             return None
-        word_chars = sum(c.isalpha() or c in " '?!.,'" for c in message)
-        if word_chars / max(len(message), 1) < 0.4:
+
+        # Message must be at least 50% real word characters
+        word_chars = sum(c.isalpha() or c in " '?!.," for c in message)
+        if word_chars / max(len(message), 1) < 0.5:
             return None
+
         return name, message
 
     def _is_own(self, name: str, message: str) -> bool:
