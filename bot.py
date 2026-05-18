@@ -55,7 +55,15 @@ class RLWeebBot:
         name, _, message = clean.partition(':')
         name = name.strip()
         message = message.strip()
-        if not name or not message or len(name) > 32:
+        if not name or not message or len(name) > 32 or len(message) > 120:
+            return None
+        # Name must be mostly alphanumeric (real player names) — reject OCR garbage
+        alnum = sum(c.isalnum() or c in '_- ' for c in name)
+        if alnum / max(len(name), 1) < 0.6:
+            return None
+        # Message must have at least 40% real word characters — reject garbled OCR
+        word_chars = sum(c.isalpha() or c in " '?!.,'" for c in message)
+        if word_chars / max(len(message), 1) < 0.4:
             return None
         return name, message
 
