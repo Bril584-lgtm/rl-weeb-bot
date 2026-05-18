@@ -24,4 +24,4 @@ QUICK_CHATS = [
 ]
 
 # Set to True and add ANTHROPIC_API_KEY to .env for AI-powered replies
-USE_AI = False
+USE_AI = True

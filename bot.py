@@ -40,33 +40,35 @@ class RLWeebBot:
 
     # ── Core logic ───────────────────────────────────────────────────────────
 
-    def _is_player_chat(self, line: str) -> tuple[bool, str]:
+    def _parse_chat(self, line: str) -> tuple[str, str] | None:
         """
-        RL text chat format is 'PlayerName: message'.
-        Returns (is_player_chat, message_only).
-        Rejects anything that doesn't have a colon separator — kills OCR noise,
-        system messages, scoreboard text, etc.
+        Parse RL chat lines. Handles both:
+          'PlayerName: message'
+          '[3:36] PlayerName: message'  (with timestamp)
+        Returns (name, message) or None if not a chat line.
         """
-        if ':' not in line:
-            return False, ''
-        name, _, message = line.partition(':')
+        import re
+        # Strip leading timestamp like [3:36] or [3.36]
+        clean = re.sub(r'^\[\d+[:.]\d+\]\s*', '', line).strip()
+        if ':' not in clean:
+            return None
+        name, _, message = clean.partition(':')
         name = name.strip()
         message = message.strip()
-        # Name should be 1–32 chars, no newlines, reasonably word-like
         if not name or not message or len(name) > 32:
-            return False, ''
-        return True, message
+            return None
+        return name, message
 
-    def _is_own_message(self, line: str) -> bool:
-        lower = line.lower()
-        if config.MY_NAME and config.MY_NAME.lower() in lower.split(':')[0]:
+    def _is_own_message(self, name: str, message: str) -> bool:
+        # RL shows your own messages as "YOU"
+        if name.upper() == 'YOU':
             return True
-        _, _, msg = line.partition(':')
-        return any(sent in msg.lower().strip() for sent in self._sent)
+        if config.MY_NAME and config.MY_NAME.lower() in name.lower():
+            return True
+        return any(sent in message.lower() for sent in self._sent)
 
     def _is_quick_chat(self, message: str) -> bool:
-        lower = message.lower()
-        return any(qc.lower() in lower for qc in config.QUICK_CHATS)
+        return any(qc.lower() in message.lower() for qc in config.QUICK_CHATS)
 
     def _schedule_reply(self, reply: str):
         delay = random.uniform(config.RESPONSE_DELAY_MIN, config.RESPONSE_DELAY_MAX)
@@ -89,11 +91,12 @@ class RLWeebBot:
         self._user_opened_chat.clear()
 
         for line in lines:
-            # Must look like "PlayerName: message" — filters all OCR noise
-            is_chat, message = self._is_player_chat(line)
-            if not is_chat:
+            parsed = self._parse_chat(line)
+            if not parsed:
                 continue
-            if self._is_own_message(line):
+            name, message = parsed
+
+            if self._is_own_message(name, message):
                 continue
             if self._is_quick_chat(message):
                 continue
@@ -106,7 +109,7 @@ class RLWeebBot:
 
             reply = self._responder.respond(message)
             if reply and not self._pending:
-                print(f"[bot] Detected: '{line}' -> '{reply}'")
+                print(f"[bot] {name}: '{message}' -> '{reply}'")
                 self._schedule_reply(reply)
                 break  # one reply at a time
 

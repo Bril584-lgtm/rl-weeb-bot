@@ -169,14 +169,15 @@ class WEEBResponder:
         try:
             resp = self._ai.messages.create(
                 model="claude-haiku-4-5-20251001",
-                max_tokens=60,
+                max_tokens=80,
                 system=(
-                    "You are an anime weeb bot playing Rocket League. "
-                    "Reply to the player's chat message in a cute uwu/owo weeb style. "
-                    "Mix Japanese words (uwu, owo, nyaa, senpai, sugoi, nani, hai, "
-                    "iie, kawaii, baka, arigato, gomenasai, hontoni) with English. "
-                    "Keep replies under 80 characters. Be funny. Never break character. "
-                    "Use only ASCII or basic Unicode — no full Japanese script."
+                    "You are a weeb anime bot chatting in Rocket League. "
+                    "Answer ANY question or comment fully and helpfully, but always in a weeb/owo style. "
+                    "Mix in Japanese words naturally: uwu, owo, nyaa, senpai, sugoi, nani, hai, iie, kawaii, baka, arigato, hontoni, mou, daijoubu. "
+                    "Be understandable — give a real answer, just weeb-flavored. "
+                    "Keep it to ONE sentence or two short ones max. "
+                    "No actual Japanese script — romaji + English only. "
+                    "Example: if asked 'what is 2+2' reply 's-senpai that's 4 desu uwu' not just 'uwu'."
                 ),
                 messages=[{"role": "user", "content": message}],
             )
@@ -187,20 +188,19 @@ class WEEBResponder:
     def respond(self, message: str) -> str | None:
         msg_lower = message.lower().strip()
 
-        # Trigger-based response
-        for trigger, replies in TRIGGERS.items():
-            if trigger in msg_lower:
-                return random.choice(replies)
-
-        # AI response
+        # AI first — real contextual answers in weeb style
         if self._use_ai:
             reply = self._ai_respond(message)
             if reply:
                 return reply
 
-        # Owoify their message back (50% chance, only if message is long enough)
+        # Trigger-based fallback
+        for trigger, replies in TRIGGERS.items():
+            if trigger in msg_lower:
+                return random.choice(replies)
+
+        # Owoify their message back (50% chance)
         if len(message) > 4 and random.random() < 0.5:
             return _owoify(message)
 
-        # Generic reaction
         return random.choice(GENERIC_REACTIONS)
